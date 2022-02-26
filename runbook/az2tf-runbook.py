@@ -4301,7 +4301,8 @@ def azurerm_kubernetes_cluster(crf,cde,crg,headers,requests,sub,json,az2tfmess,c
                 fr.write('\t linux_profile {\n')
                 fr.write('\t\t admin_username =  "' +  au + '"\n')
                 fr.write('\t\t ssh_key {\n')
-                fr.write('\t\t\t key_data = "' + sshk.rstrip() + '"\n')
+                #fr.write('\t\t\t key_data = "' + sshk.rstrip() + '"\n')
+                fr.write('\t\t\t key_data =  <<EOF\n' + sshk.rstrip() + '\nEOF\n')
                 fr.write('\t\t }\n')
                 fr.write('\t }\n')
             #else
@@ -4363,7 +4364,7 @@ def azurerm_kubernetes_cluster(crf,cde,crg,headers,requests,sub,json,az2tfmess,c
 
                 fr.write('\t agent_pool_profile {\n')
                 fr.write('\t\t name =  "' + pname + '"\n')
-                fr.write('\t\t vm_size =  "' + vms + '"\n')
+                fr.write('\t\t size =  "' + vms + '"\n')
                 fr.write('\t\t count =  "' + str(pcount) + '"\n')
                 fr.write('\t\t os_type =  "' + ost + '"\n')
 
@@ -4581,7 +4582,7 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
             except KeyError:
                 pass
 
-            fr.write('\t vm_size = "' + vmsize + '"\n')
+            fr.write('\t size = "' + vmsize + '"\n')
             #
             # Multiples
             #

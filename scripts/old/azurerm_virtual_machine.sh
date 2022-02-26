@@ -81,7 +81,7 @@ if [ "$count" -gt "0" ]; then
         if [ "$vmlic" != "null" ]; then 
             printf "\t license_type = \"%s\"\n" $vmlic >> $prefix-$name.tf
         fi
-        printf "\t vm_size = \"%s\"\n" $vmsize >> $prefix-$name.tf
+        printf "\t size = \"%s\"\n" $vmsize >> $prefix-$name.tf
         #
         # Multiples
         #

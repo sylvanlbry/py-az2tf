@@ -12,16 +12,19 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
         r = requests.get(url, headers=headers, params=params)
         azr= r.json()["value"]
 
-
-        tfrmf=tcode+tfp+"-staterm.sh"
-        tfimf=tcode+tfp+"-stateimp.sh"
-        tfrm=open(tfrmf, 'a')
-        tfim=open(tfimf, 'a')
-        print ("# " + tfp,)
         count=len(azr)
         print (count)
         for i in range(0, count):
-
+            vmtype=azr[i]["properties"]["storageProfile"]["osDisk"]["osType"]
+            if vmtype == "Windows":
+                tfp = "azurerm_windows_virtual_machine"
+            elif vmtype == "Linux":
+                tfp = "azurerm_linux_virtual_machine"
+            tfrmf=tcode+tfp+"-staterm.sh"
+            tfimf=tcode+tfp+"-stateimp.sh"
+            tfrm=open(tfrmf, 'a')
+            tfim=open(tfimf, 'a')
+            print ("# " + tfp,)
             name=azr[i]["name"]
             loc=azr[i]["location"]
             id=azr[i]["id"]
@@ -42,14 +45,13 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
             rfilename=prefix+".tf"
             fr=open(rfilename, 'w')
             fr.write(az2tfmess)
-            fr.write('resource ' + tfp + ' ' + rg + '__' + rname + ' {\n')
+            fr.write("resource \"{}\" \"{}__{}\" {{\n".format(tfp, rg, rname))
             fr.write('\t name = "' + name + '"\n')
             fr.write('\t location = "'+ loc + '"\n')
             fr.write('\t resource_group_name = "'+ rgs + '"\n')
         
             
             
-            vmtype=azr[i]["properties"]["storageProfile"]["osDisk"]["osType"]
             vmsize=azr[i]["properties"]["hardwareProfile"]["vmSize"]
             #vmdiags=azr[i]["properties"]["diagnosticsProfile"]
             #vmbturi=azr[i]["properties"]["diagnosticsProfile"]["bootDiagnostics"]["storageUri"]
@@ -74,7 +76,7 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
             except KeyError:
                 pass
 
-            fr.write('\t vm_size = "' + vmsize + '"\n')
+            fr.write('\t size = "' + vmsize + '"\n')
             #
             # Multiples
             #
@@ -98,25 +100,31 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
                         #print "priif="+priif    
                 fr.write('\t]\n')
                 fr.write(priif) 
-            #
-            fr.write('\t delete_data_disks_on_termination = "'+ 'false' + '"\n')
-            fr.write('\t delete_os_disk_on_termination = "'+ 'false' + '"\n')
-            #
+            # #
+            # TODO: Double check this
+            # fr.write('\t delete_data_disks_on_termination = "'+ 'false' + '"\n')
+            # fr.write('\t delete_os_disk_on_termination = "'+ 'false' + '"\n')
+            # #
             try:
                 vmcn=azr[i]["properties"]["osProfile"]["computerName"]
                 vmadmin=azr[i]["properties"]["osProfile"]["adminUsername"]
-                fr.write('os_profile {\n')
+                # fr.write('os_profile {\n')
                 fr.write('\tcomputer_name = "' +    vmcn + '"\n')
                 fr.write('\tadmin_username = "' +    vmadmin + '"\n')
           
-                try : 
-                    vmadminpw=azr[i]["properties"]["osProfile"]["Password"]
-                    fr.write('\t admin_password = "' +  vmadminpw + '"\n')
-                except KeyError:
-                    pass
+                # try : 
+                os_profile = azr[i]["properties"]["osProfile"]
+                if not "adminSshKey" in os_profile:
+                    vmadminpw = os_profile["Password"] if "Password" in os_profile else "p@ssw0rd"
+                    fr.write('\tadmin_password = "' + vmadminpw + '"\n')
+                else:
+                    vmadmin_ssh_key = os_profile["adminSshKey"] if "adminSshKey" in os_profile else None
+                    fr.write('\tadmin_ssh_key =  <<EOF\n' + vmadmin_ssh_key + '\nEOF\n')
+                # except KeyError:
+                #     pass
 
-                #  admin_password ?
-                fr.write('}\n')
+                # admin_password ?
+                # fr.write('}\n')
             except KeyError:
                 pass 
         
@@ -132,7 +140,7 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
                     vmimpublisher=azr[i]["properties"]["storageProfile"]["imageReference"]["publisher"]
                     vmimsku=azr[i]["properties"]["storageProfile"]["imageReference"]["sku"]
                     vmimversion=azr[i]["properties"]["storageProfile"]["imageReference"]["version"]
-                    fr.write('storage_image_reference {\n')
+                    fr.write('source_image_reference {\n')
                     fr.write('\t publisher = "' +  vmimpublisher  + '"\n')
                     fr.write('\t offer = "' +   vmimoffer + '"\n')
                     fr.write('\t sku = "' +   vmimsku + '"\n')
@@ -168,28 +176,29 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
             except KeyError:
                 pass
             #
-            if vmtype == "Windows" :
-                try:
-                    vmwvma=azr[i]["properties"]["osProfile"]["windowsConfiguration"]["provisionVMAgent"]
-                    try :
-                        vmwau=azr[i]["properties"]["osProfile"]["windowsConfiguration"]["enableAutomaticUpdates"]
-                        fr.write('os_profile_windows_config {\n')
-                        fr.write('\t enable_automatic_upgrades = ' +  str(vmwau).lower() + '\n')
-                        fr.write('\t provision_vm_agent = ' +  str(vmwvma).lower() + '\n')
-                        try :
-                            vmwtim=azr[i]["properties"]["osProfile"]["windowsConfiguration"]["timeZone"]
-                            fr.write('\t timezone =   "' + vmwtim + '"\n')
-                        except KeyError:
-                            pass
-                        fr.write('}\n')
-                    except KeyError:
-                        pass
-                except KeyError:
-                    pass
+            # TODO: Terraform complains about os_profile_windows_config
+            # if vmtype == "Windows" :
+            #     try:
+            #         vmwvma=azr[i]["properties"]["osProfile"]["windowsConfiguration"]["provisionVMAgent"]
+            #         try :
+            #             vmwau=azr[i]["properties"]["osProfile"]["windowsConfiguration"]["enableAutomaticUpdates"]
+            #             fr.write('os_profile_windows_config {\n')
+            #             fr.write('\t enable_automatic_upgrades = ' +  str(vmwau).lower() + '\n')
+            #             fr.write('\t provision_vm_agent = ' +  str(vmwvma).lower() + '\n')
+            #             try :
+            #                 vmwtim=azr[i]["properties"]["osProfile"]["windowsConfiguration"]["timeZone"]
+            #                 fr.write('\t timezone =   "' + vmwtim + '"\n')
+            #             except KeyError:
+            #                 pass
+            #             fr.write('}\n')
+            #         except KeyError:
+            #             pass
+            #     except KeyError:
+            #         pass
         
             #
             if  vmtype == "Linux" :
-                fr.write('os_profile_linux_config {\n')
+                # fr.write('os_profile_linux_config {\n')
                 try:
                     vmdispw=azr[i]["properties"]["osProfile"]["linuxConfiguration"]["disablePasswordAuthentication"]
                 except KeyError:
@@ -201,18 +210,19 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
                         vmsshpath=azr[i]["properties"]["osProfile"]["linuxConfiguration"]["ssh"]["publicKeys"][0]["path"]
                         vmsshkey=azr[i]["properties"]["osProfile"]["linuxConfiguration"]["ssh"]["publicKeys"][0]["keyData"]
                         t1=str(vmsshkey).rstrip()
-                        fr.write('\tssh_keys {\n')
-                        fr.write('\t\tpath = "' +   vmsshpath + '"\n')
+                        fr.write('\tadmin_ssh_key {\n')
+                        fr.write('\t\tusername = "adminuser"\n')
                         if "----"  not in vmsshkey:
-                            fr.write('\t\tkey_data = "' + t1 + '"\n') 
+                            #fr.write('\t\tkey_data = "' + t1 + '"\n') 
+                            fr.write('\t\t\t public_key =  <<EOF\n' + t1 + '\nEOF\n')
                         else:
-                             fr.write('\t\tkey_data = "' + '"\n')
+                             fr.write('\t\tpublic_key = "' + '"\n')
                         fr.write('\t}\n')
                     except KeyError:
                         pass
             
                 
-                fr.write('}\n')
+                #fr.write('}\n')
         
 
             #
@@ -222,11 +232,11 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
                 vmosdiskname=azr[i]["properties"]["storageProfile"]["osDisk"]["name"]
                 vmosdiskcache=azr[i]["properties"]["storageProfile"]["osDisk"]["caching"]
                 vmoscreoption=azr[i]["properties"]["storageProfile"]["osDisk"]["createOption"]
-                fr.write('storage_os_disk {\n')
-                fr.write('\t\tname = "' +    vmosdiskname + '"\n')
+                fr.write('os_disk {\n')
+                # fr.write('\t\tname = "' +    vmosdiskname + '"\n')
                 fr.write('\t\tcaching = "' +   vmosdiskcache  + '"\n')
-                fr.write('\t\tcreate_option = "' + vmoscreoption + '"\n')
-                fr.write('\t\tos_type = "' +   vmtype + '"\n')
+                # fr.write('\t\tcreate_option = "' + vmoscreoption + '"\n')
+                # fr.write('\t\tos_type = "' +   vmtype + '"\n')
 
         
                 try :
@@ -258,7 +268,13 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
                         fr.write('\tmanaged_disk_id = "' +   vmosmdid + '"\n')
                     except KeyError:
                         pass
-            
+                
+                try:
+                    stopt=azr[i]["properties"]["storageProfile"]["osDisk"]["storageAccountType"]
+                    fr.write('\t storage_account_type = "' +  stopt + '"\n')
+                except KeyError:
+                    fr.write('\t storage_account_type = "' +  "StandardSSD_LRS" + '"\n')
+                    pass 
 
                 fr.write('}\n')
             except KeyError:
@@ -316,8 +332,8 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
 
             try:
                 zones=azr[i]["zones"]
-                fr.write('zones = ')
-                fr.write(json.dumps(zones, indent=4, separators=(',', ': ')))
+                fr.write('zone = "{}"'.format(zones))
+                #fr.write(json.dumps(zones, indent=4, separators=(',', ': ')))
                 fr.write('\n')
               
             except KeyError:

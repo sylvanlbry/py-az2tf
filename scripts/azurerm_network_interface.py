@@ -58,7 +58,8 @@ def azurerm_network_interface(crf,cde,crg,headers,requests,sub,json,az2tfmess,cl
                 snsg=azr[i]["properties"]["networkSecurityGroup"]["id"].split("/")[8].replace(".","-")
                 snsgrg=azr[i]["properties"]["networkSecurityGroup"]["id"].split("/")[4].replace(".","-").lower()
                 if snsgrg[0].isdigit(): snsgrg="rg_"+snsgrg
-                fr.write('\t network_security_group_id = azurerm_network_security_group.' + snsgrg + '__' + snsg + '.id\n')
+                # TODO: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association
+                # fr.write('\t network_security_group_id = azurerm_network_security_group.' + snsgrg + '__' + snsg + '.id\n')
             except KeyError:
                 pass
                
