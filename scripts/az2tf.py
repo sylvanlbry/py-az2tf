@@ -12,13 +12,14 @@ import ast
 # RUNBOOK OFF
 scwd=os.getcwd()
 #print scwd
-head, tail = os.path.split(scwd)
-os.chdir(head)
-cwd=os.getcwd()
-head, tail = os.path.split(cwd)
-newd=head+"/scripts"
+# head, tail = os.path.split(scwd)
+# os.chdir(head)
+# cwd=os.getcwd()
+# head, tail = os.path.split(cwd)
+# newd=head+"/scripts"
 # chdir scripts
-os.chdir(newd)
+# os.chdir(newd)
+# os.chdir('scripts')
 #print os.getcwd()
 #import azure_resources
 # RUNBOOK ON

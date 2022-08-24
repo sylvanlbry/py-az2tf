@@ -273,7 +273,11 @@ def azurerm_virtual_machine(crf,cde,crg,headers,requests,sub,json,az2tfmess,cldu
                             pass
                     
                     try:
-                        stopt=azr[i]["properties"]["storageProfile"]["osDisk"]["storageAccountType"]
+                        os_disk = azr[i]["properties"]["storageProfile"]["osDisk"]
+                        if "managedDisk" in os_disk:
+                            stopt=os_disk["managedDisk"]["storageAccountType"]
+                        else:
+                            stopt=os_disk["storageAccountType"]
                         fr.write('\t storage_account_type = "' +  stopt + '"\n')
                     except KeyError:
                         fr.write('\t storage_account_type = "' +  "StandardSSD_LRS" + '"\n')
